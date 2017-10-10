@@ -4,13 +4,16 @@
   "scripts": {
     "clean": "bsb -clean-world",
     "build": "bsb -make-world",
-    "watch": "bsb -make-world -w"
+    "watch": "bsb -make-world -w",
+    "test": "npm run build && jest",
+    "test:watch": "jest --watchAll"
   },
   "keywords": [
     "BuckleScript"
   ],
   "license": "MIT",
   "devDependencies": {
-    "bs-platform": "^1.9.1"
+    "bs-jest": "^0.2.0",
+    "bs-platform": "^1.9.3"
   }
 }

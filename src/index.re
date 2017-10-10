@@ -18,7 +18,7 @@ let commandOfString (command: string): command =>
 ;
 
 type result =
-  | Ok
+  | Ok string
   | Error string
   ;
 
@@ -38,17 +38,35 @@ let getCommand args => {
 
 let execCommand (command: command, options): result => {
   switch command {
-    | Help => Js.log "here some help"; Ok
-    | Install => Node_child_process.execSync ("brew install " ^ (List.hd options)) (Node_child_process.option ()); Js.log options; Ok;
+    | Help => Ok "here some help"
+    | Install => Node_child_process.execSync ("brew install " ^ (List.hd options)) (Node_child_process.option ()); Ok "";
     | Unknown => Js.log ("I don't know " ^ commandToString command ^ " command"); Error (commandToString command)
   };
 };
 
-let () =
-  parseArguments Node_process.argv
-  |> getCommand
-  |> execCommand
-  |> Js.log;
+module type System = {
+  let log: string => unit;
+};
+
+module System: System = {
+  let log = Js.log;
+};
+
+module Main = fun (System: System) => {
+  let run stdin =>
+    parseArguments stdin
+    |> getCommand
+    |> execCommand
+    |> fun res => switch res {
+      | Ok resText => System.log resText
+      | Error resText => System.log resText
+    };
+};
+
+let () = {
+  module Main' = Main System;
+  Main'.run Node_process.argv;
+}
   /* |> fun
     | [command, ...options] => let _ = exec (commandOfString command);
     | _ => exec (Unknown);
