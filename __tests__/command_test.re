@@ -1,47 +1,43 @@
 open Jest;
+
 open Index;
+
 open Expect;
 
 let _ =
+  describe("brewery help", () => {
+      test("it returns help", () => {
+          let res = ref("");
+          let system = {
+            log: (s) => {
+              res := s;
+              ()
+            },
+            writeFile: (_, _) => ()
+          };
+          Index.run(system, [|"node", "program", "help"|]);
+          expect(res^) |> toBe("here some help")
+        }
+      );
+      describe("brewery init", () =>
+          test("it creates a .brewery.json", () => {
+              let res = ref("");
+              let writeFileRes = ref(("", ""));
+              let system = {
+                log: (s) => {
+                  res := s;
+                  ()
+                },
+                writeFile: (path, content) => writeFileRes := (path, content)
+              };
+              Index.run(system, [|"node", "program", "init"|]);
 
-describe "brewery help" (fun () => {
-  test "it returns help" (fun () => {
-    let res = ref "";
-    let system = {
-      log: fun s => {
-        res := s;
-        ()
-      },
-      writeFile: fun _ _ => (),
-    };
+              let Some(brewConfigJson) = Js.Json.stringifyAny({"cask": [||], "brew": [||]});
 
-    Index.run system [|"node", "program", "help"|];
-
-    expect !res |> toBe "here some help"
-  });
-  
-  describe "brewery init" (fun () => {
-    test "it creates a .brewery.json" (fun () => {
-      let res = ref "";
-      let writeFileRes = ref ("", "");
-      let system = {
-        log: fun s => {
-          res := s;
-          ()
-        },
-        writeFile: fun path content => writeFileRes := (path, content)
-      };
-
-      Index.run system [|"node", "program", "init"|];
-
-      expect (
-        !writeFileRes,
-        !res
-      ) |> toEqual (
-        (Index.breweryConfig, "{cask: [], brew: []}"),
-        ".brewery.json created"
+              expect((writeFileRes^, res^))
+              |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json created"))
+            }
+          )
       )
-    });
-  });
-});
-  
+    }
+  );
