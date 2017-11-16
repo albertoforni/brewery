@@ -4,10 +4,10 @@ type brewConfig = {
 }
 and package = {name: string};
 
-let make = () => {
-   cask: [],
-   brew: []
- };
+let make = (~brew, ~cask) => {
+    cask: List.map((p) => { { name: p } }, cask),
+    brew: List.map((p) => { { name: p } }, brew),
+};
 
 let toDict = (brewConfig) => {
   let dict = Js.Dict.empty();
@@ -20,3 +20,7 @@ let toDict = (brewConfig) => {
   Js.Dict.set(dict, "brew", Js.Json.stringArray(packages(brewConfig.brew))); 
   dict
 };
+
+let toJson = (brewConfig) => {
+  Js.Json.stringifyAny(brewConfig |> toDict);
+}

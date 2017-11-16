@@ -4,40 +4,126 @@ open Index;
 
 open Expect;
 
+let defaultSystem = {log: (_) => (), writeFile: (_, _) => (), exec: (_) => ""};
+
 let _ =
-  describe("brewery help", () => {
-      test("it returns help", () => {
-          let res = ref("");
+  describe(
+    "brewery help",
+    () =>
+      test(
+        "it returns help",
+        () => {
+          let logs = ref("");
           let system = {
+            ...defaultSystem,
             log: (s) => {
-              res := s;
+              logs := s;
               ()
-            },
-            writeFile: (_, _) => ()
+            }
           };
           Index.run(system, [|"node", "program", "help"|]);
-          expect(res^) |> toBe("here some help")
+          expect(logs^) |> toBe("here some help")
         }
-      );
-      describe("brewery init", () =>
-          test("it creates a .brewery.json", () => {
-              let res = ref("");
-              let writeFileRes = ref(("", ""));
-              let system = {
-                log: (s) => {
-                  res := s;
-                  ()
-                },
-                writeFile: (path, content) => writeFileRes := (path, content)
-              };
-              Index.run(system, [|"node", "program", "init"|]);
-
-              let Some(brewConfigJson) = Js.Json.stringifyAny({"cask": [||], "brew": [||]});
-
-              expect((writeFileRes^, res^))
-              |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json created"))
-            }
-          )
       )
-    }
   );
+
+describe(
+  "brewery init",
+  () => {
+    test(
+      "installs brew when it's not there",
+      () => {
+        let installBrew = ref(false);
+        let system = {
+          ...defaultSystem,
+          exec: (command) => switch command {
+            | "brew" => assert(false) /* when it errors it means it is not installed */
+            | s when s == Index.installBrewScript => { installBrew := true; "install script output" }
+            | "brew leaves" => "first\nsecond" 
+            | "brew cask list" => "3\n4"
+            | _ => ""
+          }
+        };
+        Index.run(system, [|"node", "program", "init"|]);
+        expect(installBrew^)
+        |> toEqual(true)
+      }
+    );
+
+    test(
+      "creates a .brewery.json with the returned brew packages",
+      () => {
+        let logs = ref("");
+        let writeFileRes = ref(("", ""));
+        let system = {
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          writeFile: (path, content) => writeFileRes := (path, content),
+          exec: (command) => switch command {
+            | "brew" => "brew already installed"
+            | "brew leaves" => "first\nsecond"
+            | "brew cask list" => "3\n4"
+            | _ => ""
+          }
+        };
+        Index.run(system, [|"node", "program", "init"|]);
+        let brewConfigJson = switch (Js.Json.stringifyAny({"cask": [|"3", "4"|], "brew": [|"first", "second"|]})) {
+          | Some(s) => s
+          | None => ""
+        };
+        expect((writeFileRes^, logs^))
+        |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json created"))
+      }
+    );
+
+    test(
+      "returns an error when brew leaves throws and does not write .brewconfig",
+      () => {
+        let logs = ref("");
+        let writeFileRes = ref(("", ""));
+        let system = {
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          writeFile: (path, content) => writeFileRes := (path, content),
+          exec: (command) => switch command {
+            | "brew" => "brew already installed"
+            | "brew leaves" => assert(false)
+            | "brew cask list" => "3\n4"
+            | _ => ""
+          }
+        };
+        Index.run(system, [|"node", "program", "init"|]);
+        expect((writeFileRes^, logs^))
+        |> toEqual((("", ""), "error getting installed formulas"))
+      }
+    );
+
+    test(
+      "returns an error when brew cask install throws and does not write .brewconfig",
+      () => {
+        let logs = ref("");
+        let writeFileRes = ref(("", ""));
+        let system = {
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          writeFile: (path, content) => writeFileRes := (path, content),
+          exec: (command) => switch command {
+            | "brew" => "brew already installed"
+            | "brew leaves" => "3\n4"
+            | "brew cask list" => assert(false)
+            | _ => ""
+          }
+        };
+        Index.run(system, [|"node", "program", "init"|]);
+        expect((writeFileRes^, logs^))
+        |> toEqual((("", ""), "error getting installed formulas"))
+      }
+    )
+  }
+);
