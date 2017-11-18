@@ -37,7 +37,7 @@ describe(
         let system = {
           ...defaultSystem,
           exec: (command) => switch command {
-            | "brew" => assert(false) /* when it errors it means it is not installed */
+            | "brew --version" => assert(false) /* when it errors out it means it is not installed */
             | s when s == Index.installBrewScript => { installBrew := true; "install script output" }
             | "brew leaves" => "first\nsecond" 
             | "brew cask list" => "3\n4"
@@ -63,7 +63,7 @@ describe(
           },
           writeFile: (path, content) => writeFileRes := (path, content),
           exec: (command) => switch command {
-            | "brew" => "brew already installed"
+            | "brew --version" => "brew already installed"
             | "brew leaves" => "first\nsecond"
             | "brew cask list" => "3\n4"
             | _ => ""
@@ -92,7 +92,7 @@ describe(
           },
           writeFile: (path, content) => writeFileRes := (path, content),
           exec: (command) => switch command {
-            | "brew" => "brew already installed"
+            | "brew --version" => "brew already installed"
             | "brew leaves" => assert(false)
             | "brew cask list" => "3\n4"
             | _ => ""
@@ -117,7 +117,7 @@ describe(
           },
           writeFile: (path, content) => writeFileRes := (path, content),
           exec: (command) => switch command {
-            | "brew" => "brew already installed"
+            | "brew --version" => "brew already installed"
             | "brew leaves" => "3\n4"
             | "brew cask list" => assert(false)
             | _ => ""
