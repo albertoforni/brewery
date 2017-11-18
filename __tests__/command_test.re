@@ -4,7 +4,7 @@ open Index;
 
 open Expect;
 
-let defaultSystem = {log: (_) => (), writeFile: (_, _) => (), exec: (_) => ""};
+let defaultSystem = {log: (_) => (), writeFile: (_, _) => (), exec: (_) => "", fileExists: (_) => false };
 
 let _ =
   describe(
@@ -56,6 +56,7 @@ describe(
         let logs = ref("");
         let writeFileRes = ref(("", ""));
         let system = {
+          ...defaultSystem,
           log: (s) => {
             logs := s;
             ()
@@ -84,6 +85,7 @@ describe(
         let logs = ref("");
         let writeFileRes = ref(("", ""));
         let system = {
+          ...defaultSystem,
           log: (s) => {
             logs := s;
             ()
@@ -108,6 +110,7 @@ describe(
         let logs = ref("");
         let writeFileRes = ref(("", ""));
         let system = {
+          ...defaultSystem,
           log: (s) => {
             logs := s;
             ()
@@ -123,6 +126,26 @@ describe(
         Index.run(system, [|"node", "program", "init"|]);
         expect((writeFileRes^, logs^))
         |> toEqual((("", ""), "error getting installed formulas"))
+      }
+    );
+
+    test(
+      "returns an error if .brewery.json is already there",
+      () => {
+        let logs = ref("");
+        let writeFileRes = ref(("", ""));
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          writeFile: (path, content) => writeFileRes := (path, content),
+          fileExists: (path) => if (path == Index.breweryConfig) true else assert(false)
+        };
+        Index.run(system, [|"node", "program", "init"|]);
+        expect((writeFileRes^, logs^))
+        |> toEqual((("", ""), Index.breweryConfig ++ " exists already"))
       }
     )
   }

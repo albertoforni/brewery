@@ -3,7 +3,8 @@ let installBrewScript = {|/usr/bin/ruby -e "$(curl -fsSL https://raw.githubuserc
 type system = {
   log: string => unit,
   writeFile: (string, string) => unit,
-  exec: string => string
+  exec: string => string,
+  fileExists: string => bool
 };
 
 [@bs.module "os"] external homedir : unit => string = "";
@@ -75,8 +76,10 @@ let run = (system, stdin) => {
   let writeBrewFile = (brewConfig) =>
     switch (Brewconfig.toJson(brewConfig)) {
     | Some(s) =>
-      system.writeFile(breweryConfig, s);
-      Ok(".brewery.json created")
+      ifFn(() => system.fileExists(breweryConfig), () => Error(breweryConfig ++ " exists already"), () => {
+        system.writeFile(breweryConfig, s);
+        Ok(".brewery.json created")
+      })
     | None => Error("unable to create initial brewery.json")
     };
 
@@ -137,7 +140,8 @@ let run = (system, stdin) => {
 let system = {
   log: Js.log,
   writeFile: Node_fs.writeFileAsUtf8Sync,
-  exec: (command) => Node_child_process.execSync(command, Node_child_process.option())
+  exec: (command) => Node_child_process.execSync(command, Node_child_process.option()),
+  fileExists: (filePath) => Node_fs.existsSync(filePath)
 };
 
 let () = run(system, Node_process.argv);
