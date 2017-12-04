@@ -4,7 +4,7 @@ open Index;
 
 open Expect;
 
-let defaultSystem = {log: (_) => (), writeFile: (_, _) => (), exec: (_) => "", fileExists: (_) => false };
+let defaultSystem = {log: (_) => (), writeFile: (_, _) => (), exec: (_) => "", fileExists: (_) => false, readFile: (_) => "" };
 
 let _ =
   describe(
@@ -150,3 +150,62 @@ describe(
     )
   }
 );
+
+describe(
+  "brewery install",
+  () => {
+    let initialBrewery = Js.Json.stringifyAny({"cask": [|"3"|], "brew": [|"first", "second"|]})
+    |> (res) => switch res {
+      | Some(content) => content
+      | None => "error"
+    };
+      test(
+        "installs brew when it's not there",
+        () => {
+          let installBrew = ref(false);
+          let system = {
+            ...defaultSystem,
+            exec: (command) => switch command {
+              | "brew --version" => assert(false) /* when it errors it means it is not installed */
+              | s when s == Index.installBrewScript => { installBrew := true; "install script output" }
+              | "brew leaves" => "first\nsecond"
+              | "brew cask list" => "3\n4"
+              | _ => ""
+            }
+          };
+          Index.run(system, [|"node", "program", "install"|]);
+          expect(installBrew^)
+          |> toEqual(true)
+        }
+      );
+      
+      test(
+      "adds package to .brewery.json",
+      () => {
+        let logs = ref("");
+        let writeFileRes = ref(("", ""));
+        let readFileRes = ref("");
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          writeFile: (path, content) => writeFileRes := (path, content),
+          readFile: (path) => { readFileRes := (path); initialBrewery },
+          exec: (command) => switch command {
+            | "brew --version" => "brew already installed"
+            | _ => ""
+          }
+        };
+        Index.run(system, [|"node", "program", "install", "yarn"|]);
+        let brewConfigJson = switch (Js.Json.stringifyAny({"cask": [|"3"|], "brew": [|"first", "second", "yarn"|]})) {
+          | Some(s) => s
+          | None => ""
+        };
+        expect((writeFileRes^, logs^))
+        |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json updated"))
+      }
+    );
+  }
+ );

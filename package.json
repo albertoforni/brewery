@@ -14,9 +14,9 @@
   "license": "MIT",
   "devDependencies": {
     "bs-jest": "^0.2.0",
-    "bs-platform": "^2.0.0"
+    "bs-platform": "^2.1.0"
   },
   "dependencies": {
-    "bs-json": "^0.2.3"
+    "bs-json": "^0.2.4"
   }
 }

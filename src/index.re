@@ -1,8 +1,10 @@
+open Result;
 let installBrewScript = {|/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"|};
 
 type system = {
   log: string => unit,
   writeFile: (string, string) => unit,
+  readFile: (string) => string,
   exec: string => string,
   fileExists: string => bool
 };
@@ -12,24 +14,14 @@ type system = {
 type command =
   | Help
   | Unknown
+  | Install
   | Init;
-
-type result('a) =
-  | Ok('a)
-  | Error(string);
-
-let bind = (result, fn) =>
-  switch result {
-  | Ok(s) => fn(s)
-  | Error(s) => Error(s)
-  };
-
-let (>>=) = bind;
 
 let commandToString = (command: command) : string =>
   switch command {
   | Help => "help"
   | Init => "init"
+  | Install => "install"
   | Unknown => "unknown"
   };
 
@@ -60,12 +52,13 @@ let commandOfString = (command: string) : command =>
     fun
     | "help" => Help
     | "init" => Init
+    | "install" => Install
     | _ => Unknown
   );
 
 let getCommand = (args) =>
   switch args {
-  | [command, ...options] => (commandOfString(command), options)
+  | [command, ...rest] => (commandOfString(command), rest)
   | _ => (Unknown, [])
   };
 
@@ -85,6 +78,14 @@ let writeBrewFile = (fileExists, writeFile, brewConfig) =>
     )
   | None => Error("unable to create initial brewery.json")
   };
+
+let loadBrewFile = (readFile, ()) =>
+  readFile(breweryConfig)
+  |> Brewconfig.fromJson
+  |> fun
+    | Ok(brewConf) => Ok(brewConf)
+    | Error(err) => Error(err)
+    ;
 
 let getInstalledFormulas = (exec, ()) => {
   let getInstalledFormulas = () => {
@@ -121,13 +122,36 @@ let isBrewInstalled = (exec, ()) => {
   }
 };
 
-let execCommand = (system, (command, options)) =>
+let installFormula = (exec, args, brewConfig) => {
+  if (List.length(args) >= 1) {
+    let formula = List.hd(args);
+    tryCatch(() => {
+      formula
+      |> (c) => exec("brew install " ++ c);
+      Ok()
+    }, Error("Error installing " ++ formula ++ " formula"))
+    <$> () => Brewconfig.add(brewConfig, formula)
+  } else {
+    Error("No formula has been passed")
+  }
+};
+
+let execCommand = (system, (command, args)) =>
   switch command {
   | Help => Ok("here some help")
   | Init =>
     ifFn(isBrewInstalled(system.exec), () => Ok(), installBrew(system.exec))
     >>= getInstalledFormulas(system.exec)
     >>= writeBrewFile(system.fileExists, system.writeFile)
+  | Install =>
+    ifFn(isBrewInstalled(system.exec), () => Ok(), installBrew(system.exec))
+    >>= loadBrewFile(system.readFile)
+    >>= installFormula(system.exec, args)
+    >>= writeBrewFile((_) => false, system.writeFile)
+    |> (res) => switch res {
+      | Ok(_) => Ok(".brewery.json updated")
+      | Error(err) => Error(err)
+    };
   | Unknown =>
     system.log("I don't know " ++ (commandToString(command) ++ " command"));
     Error(commandToString(command))
@@ -148,8 +172,9 @@ let run = (system, stdin) =>
 let system = {
   log: Js.log,
   writeFile: Node_fs.writeFileAsUtf8Sync,
+  readFile: Node_fs.readFileAsUtf8Sync,
   exec: (command) => Node_child_process.execSync(command, Node_child_process.option()),
-  fileExists: (filePath) => Sys.file_exists(filePath)
+  fileExists: (filePath) => tryCatch(() => { let _ = Node_fs.readFileAsUtf8Sync(filePath); true }, false)
 };
 
 let () = run(system, Node_process.argv);
