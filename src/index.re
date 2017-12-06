@@ -76,7 +76,11 @@ let getInstalledFormulas = (exec, ()) =>
     () => {
       let getInstalledFormulasFor = (command) => {
         let leaves: string = exec(command) |> Utils.stringOfBuffer;
-        leaves |> Js.String.split("\n") |> Array.to_list |> List.map(fun (s) => (s: string))
+        leaves
+        |> String.trim
+        |> Js.String.split("\n")
+        |> Array.to_list
+        |> List.map(fun (s) => (s: string))
       };
       Ok(
         Brewconfig.make(

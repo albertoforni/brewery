@@ -48,8 +48,8 @@ describe(
             | s when s == Index.installBrewScript =>
               installBrew := true;
               "install script output"
-            | "brew leaves" => "first\nsecond"
-            | "brew cask list" => "3\n4"
+            | "brew leaves" => "first\nsecond\n"
+            | "brew cask list" => "3\n4\n"
             | _ => ""
             }
         };
@@ -72,8 +72,8 @@ describe(
           exec: (command) =>
             switch command {
             | "brew --version" => "brew already installed"
-            | "brew leaves" => "first\nsecond"
-            | "brew cask list" => "3\n4"
+            | "brew leaves" => "first\nsecond\n"
+            | "brew cask list" => "3\n4\n"
             | _ => ""
             }
         };
@@ -103,7 +103,7 @@ describe(
             switch command {
             | "brew --version" => "brew already installed"
             | "brew leaves" => assert false
-            | "brew cask list" => "3\n4"
+            | "brew cask list" => "3\n4\n"
             | _ => ""
             }
         };
@@ -126,7 +126,7 @@ describe(
           exec: (command) =>
             switch command {
             | "brew --version" => "brew already installed"
-            | "brew leaves" => "3\n4"
+            | "brew leaves" => "3\n4\n"
             | "brew cask list" => assert false
             | _ => ""
             }
@@ -186,8 +186,8 @@ describe(
             | s when s == Index.installBrewScript =>
               installBrew := true;
               "install script output"
-            | "brew leaves" => "first\nsecond"
-            | "brew cask list" => "3\n4"
+            | "brew leaves" => "first\nsecond\n"
+            | "brew cask list" => "3\n4\n"
             | _ => ""
             }
         };
