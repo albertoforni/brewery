@@ -37,7 +37,7 @@ let toDict = (brewConfig) => {
   dict
 };
 
-let toJson = (brewConfig) => Js.Json.stringifyAny(brewConfig |> toDict);
+let toJson = (brewConfig) => Utils.jsonStringfy(brewConfig |> toDict);
 
 let fromJson = (brewConfig) => {
   let json =

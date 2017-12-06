@@ -79,7 +79,7 @@ describe(
         };
         Index.run(system, [|"node", "program", "init"|]);
         let brewConfigJson =
-          switch (Js.Json.stringifyAny({"cask": [|"3", "4"|], "brew": [|"first", "second"|]})) {
+          switch (Utils.jsonStringfy({"cask": [|"3", "4"|], "brew": [|"first", "second"|]})) {
           | Some(s) => s
           | None => ""
           };
@@ -166,7 +166,7 @@ describe(
   "brewery install",
   () => {
     let initialBrewery =
-      Js.Json.stringifyAny({"cask": [|"3"|], "brew": [|"first", "second"|]})
+      Utils.jsonStringfy({"cask": [|"3"|], "brew": [|"first", "second"|]})
       |> (
         (res) =>
           switch res {
@@ -220,7 +220,7 @@ describe(
         };
         Index.run(system, [|"node", "program", "install", "yarn"|]);
         let brewConfigJson =
-          switch (Js.Json.stringifyAny({"cask": [|"3"|], "brew": [|"first", "second", "yarn"|]})) {
+          switch (Utils.jsonStringfy({"cask": [|"3"|], "brew": [|"first", "second", "yarn"|]})) {
           | Some(s) => s
           | None => ""
           };
@@ -253,7 +253,7 @@ describe(
         };
         Index.run(system, [|"node", "program", "install", "cask", "yay"|]);
         let brewConfigJson =
-          switch (Js.Json.stringifyAny({"cask": [|"3", "yay"|], "brew": [|"first", "second"|]})) {
+          switch (Utils.jsonStringfy({"cask": [|"3", "yay"|], "brew": [|"first", "second"|]})) {
           | Some(s) => s
           | None => ""
           };

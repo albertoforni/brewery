@@ -33,12 +33,6 @@ let tryCatch = (fn, error) =>
   | _ => error
   };
 
-let stringOfBuffer: string => string = [%bs.raw
-  {|
-  function stringOfBuffer (buffer) { return buffer.toString(); }
-|}
-];
-
 let commandOfString = (command: string) : command =>
   command
   |> String.lowercase
@@ -81,7 +75,7 @@ let getInstalledFormulas = (exec, ()) =>
   tryCatch(
     () => {
       let getInstalledFormulasFor = (command) => {
-        let leaves: string = exec(command) |> stringOfBuffer;
+        let leaves: string = exec(command) |> Utils.stringOfBuffer;
         leaves |> Js.String.split("\n") |> Array.to_list |> List.map(fun (s) => (s: string))
       };
       Ok(
