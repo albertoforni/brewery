@@ -1,10 +1,11 @@
 open Result;
+
 let installBrewScript = {|/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"|};
 
 type system = {
   log: string => unit,
   writeFile: (string, string) => unit,
-  readFile: (string) => string,
+  readFile: string => string,
   exec: string => string,
   fileExists: string => bool
 };
@@ -38,13 +39,6 @@ let stringOfBuffer: string => string = [%bs.raw
 |}
 ];
 
-let ifFn = (condition, thenDo, elseDo) =>
-  if (condition()) {
-    thenDo()
-  } else {
-    elseDo()
-  };
-
 let commandOfString = (command: string) : command =>
   command
   |> String.lowercase
@@ -56,7 +50,7 @@ let commandOfString = (command: string) : command =>
     | _ => Unknown
   );
 
-let getCommand = (args) =>
+let getCommandAndArguments = (args) =>
   switch args {
   | [command, ...rest] => (commandOfString(command), rest)
   | _ => (Unknown, [])
@@ -65,27 +59,22 @@ let getCommand = (args) =>
 let parseArguments = (args: array(string)) : list(string) =>
   Array.sub(args, 2, Array.length(args) - 2) |> Array.to_list;
 
-let writeBrewFile = (fileExists, writeFile, brewConfig) =>
+let writeBrewFile = (writeFile, brewConfig) =>
   switch (Brewconfig.toJson(brewConfig)) {
   | Some(s) =>
-    ifFn(
-      () => fileExists(breweryConfig),
-      () => Error(breweryConfig ++ " exists already"),
-      () => {
-        writeFile(breweryConfig, s);
-        Ok(".brewery.json created")
-      }
-    )
+    writeFile(breweryConfig, s);
+    Ok()
   | None => Error("unable to create initial brewery.json")
   };
 
 let loadBrewFile = (readFile, ()) =>
   readFile(breweryConfig)
   |> Brewconfig.fromJson
-  |> fun
+  |> (
+    fun
     | Ok(brewConf) => Ok(brewConf)
     | Error(err) => Error(err)
-    ;
+  );
 
 let getInstalledFormulas = (exec, ()) => {
   let getInstalledFormulas = () => {
@@ -103,7 +92,7 @@ let getInstalledFormulas = (exec, ()) => {
   tryCatch(getInstalledFormulas, Error("error getting installed formulas"))
 };
 
-let installBrew = (exec, ()) =>
+let installBrew = (exec) =>
   tryCatch(
     () => {
       let _ = exec(installBrewScript);
@@ -112,7 +101,7 @@ let installBrew = (exec, ()) =>
     Error("error installing brew")
   );
 
-let isBrewInstalled = (exec, ()) => {
+let isBrewInstalled = (exec) => {
   let isInstalled = () => {
     let _ = exec("brew --version");
     true
@@ -122,36 +111,60 @@ let isBrewInstalled = (exec, ()) => {
   }
 };
 
-let installFormula = (exec, args, brewConfig) => {
+let installFormula = (exec, args, brewConfig) =>
   if (List.length(args) >= 1) {
     let formula = List.hd(args);
-    tryCatch(() => {
-      formula
-      |> (c) => exec("brew install " ++ c);
-      Ok()
-    }, Error("Error installing " ++ formula ++ " formula"))
-    <$> () => Brewconfig.add(brewConfig, formula)
+    tryCatch(
+      () => {
+        formula |> ((c) => exec("brew install " ++ c));
+        Ok()
+      },
+      Error("Error installing " ++ formula ++ " formula")
+    )
+    <$> (() => Brewconfig.add(brewConfig, formula))
   } else {
     Error("No formula has been passed")
-  }
-};
+  };
+
+let installBrewIfNeeded = (exec) =>
+  if (isBrewInstalled(exec)) {
+    Ok()
+  } else {
+    installBrew(exec)
+  };
 
 let execCommand = (system, (command, args)) =>
   switch command {
   | Help => Ok("here some help")
   | Init =>
-    ifFn(isBrewInstalled(system.exec), () => Ok(), installBrew(system.exec))
+    let writeBrewFileIfDoesNotExists = (brewConfig) =>
+      if (system.fileExists(breweryConfig)) {
+        Error(breweryConfig ++ " exists already")
+      } else {
+        writeBrewFile(system.writeFile, brewConfig)
+      };
+    installBrewIfNeeded(system.exec)
     >>= getInstalledFormulas(system.exec)
-    >>= writeBrewFile(system.fileExists, system.writeFile)
+    >>= writeBrewFileIfDoesNotExists
+    |> (
+      (res) =>
+        switch res {
+        | Ok () => Ok(".brewery.json created")
+        | Error(err) => Error(err)
+        }
+    )
   | Install =>
-    ifFn(isBrewInstalled(system.exec), () => Ok(), installBrew(system.exec))
+    installBrewIfNeeded(system.exec)
     >>= loadBrewFile(system.readFile)
     >>= installFormula(system.exec, args)
-    >>= writeBrewFile((_) => false, system.writeFile)
-    |> (res) => switch res {
-      | Ok(_) => Ok(".brewery.json updated")
-      | Error(err) => Error(err)
-    };
+    >>= writeBrewFile(system.writeFile)
+    |> (
+      (res) =>
+        switch res {
+        | Ok () => Ok(".brewery.json updated")
+        | Error(err) => Error(err)
+        }
+    )
   | Unknown =>
     system.log("I don't know " ++ (commandToString(command) ++ " command"));
     Error(commandToString(command))
@@ -159,7 +172,7 @@ let execCommand = (system, (command, args)) =>
 
 let run = (system, stdin) =>
   parseArguments(stdin)
-  |> getCommand
+  |> getCommandAndArguments
   |> execCommand(system)
   |> (
     (res) =>
@@ -174,7 +187,14 @@ let system = {
   writeFile: Node_fs.writeFileAsUtf8Sync,
   readFile: Node_fs.readFileAsUtf8Sync,
   exec: (command) => Node_child_process.execSync(command, Node_child_process.option()),
-  fileExists: (filePath) => tryCatch(() => { let _ = Node_fs.readFileAsUtf8Sync(filePath); true }, false)
+  fileExists: (filePath) =>
+    tryCatch(
+      () => {
+        let _ = Node_fs.readFileAsUtf8Sync(filePath);
+        true
+      },
+      false
+    )
 };
 
 let () = run(system, Node_process.argv);
