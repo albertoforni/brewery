@@ -69,6 +69,7 @@ let writeBrewFile = (writeFile, brewConfig) =>
 
 let loadBrewFile = (readFile, ()) =>
   readFile(breweryConfig)
+  |> String.trim
   |> Brewconfig.fromJson
   |> (
     fun
@@ -76,21 +77,22 @@ let loadBrewFile = (readFile, ()) =>
     | Error(err) => Error(err)
   );
 
-let getInstalledFormulas = (exec, ()) => {
-  let getInstalledFormulas = () => {
-    let getInstalledFormulasFor = (command) => {
-      let leaves: string = exec(command) |> stringOfBuffer;
-      leaves |> Js.String.split("\n") |> Array.to_list |> List.map(fun (s) => (s: string))
-    };
-    Ok(
-      Brewconfig.make(
-        ~brew=getInstalledFormulasFor("brew leaves"),
-        ~cask=getInstalledFormulasFor("brew cask list")
+let getInstalledFormulas = (exec, ()) =>
+  tryCatch(
+    () => {
+      let getInstalledFormulasFor = (command) => {
+        let leaves: string = exec(command) |> stringOfBuffer;
+        leaves |> Js.String.split("\n") |> Array.to_list |> List.map(fun (s) => (s: string))
+      };
+      Ok(
+        Brewconfig.make(
+          ~brew=getInstalledFormulasFor("brew leaves"),
+          ~cask=getInstalledFormulasFor("brew cask list")
+        )
       )
-    )
-  };
-  tryCatch(getInstalledFormulas, Error("error getting installed formulas"))
-};
+    },
+    Error("error getting installed formulas")
+  );
 
 let installBrew = (exec) =>
   tryCatch(
@@ -111,20 +113,36 @@ let isBrewInstalled = (exec) => {
   }
 };
 
-let installFormula = (exec, args, brewConfig) =>
-  if (List.length(args) >= 1) {
-    let formula = List.hd(args);
-    tryCatch(
-      () => {
-        formula |> ((c) => exec("brew install " ++ c));
-        Ok()
-      },
-      Error("Error installing " ++ formula ++ " formula")
-    )
-    <$> (() => Brewconfig.add(brewConfig, formula))
-  } else {
-    Error("No formula has been passed")
-  };
+let installFormula = (exec, args, brewConfig) => {
+  let getFormula = () =>
+    if (List.hd(args) == "cask") {
+      (List.nth(args, 1), true)
+    } else {
+      (List.hd(args), false)
+    };
+  tryCatch(() => Ok(getFormula()), Error("No formula has been passed"))
+  >>= (
+    ((formula, isCask)) =>
+      tryCatch(
+        () => {
+          let _ =
+            exec(
+              "brew install "
+              ++ (
+                if (isCask) {
+                  "cask" ++ formula
+                } else {
+                  formula
+                }
+              )
+            );
+          Ok()
+        },
+        Error("Error installing " ++ formula ++ " formula")
+      )
+      <$> (() => Brewconfig.add(brewConfig, isCask, formula))
+  )
+};
 
 let installBrewIfNeeded = (exec) =>
   if (isBrewInstalled(exec)) {
