@@ -128,7 +128,7 @@ let installFormula = (exec, args, brewConfig) => {
               "brew install "
               ++ (
                 if (isCask) {
-                  "cask" ++ formula
+                  {j|cask $formula|j}
                 } else {
                   formula
                 }
@@ -136,7 +136,7 @@ let installFormula = (exec, args, brewConfig) => {
             );
           Ok()
         },
-        Error("Error installing " ++ formula ++ " formula")
+        Error({j|Error installing $formula formula|j})
       )
       <$> (() => Brewconfig.add(brewConfig, isCask, formula))
   )
