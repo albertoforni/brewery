@@ -64,7 +64,7 @@ let writeBrewFile = (writeFile, brewConfig) =>
   | None => Error("unable to create initial brewery.json")
   };
 
-let loadBreweryConfig = (readFile, ()) =>
+let loadBreweryConfig = (readFile) =>
   tryCatch(
     () =>
       readFile(breweryConfig)
@@ -78,7 +78,7 @@ let loadBreweryConfig = (readFile, ()) =>
     Error({j|Error loading $breweryConfig|j})
   );
 
-let getInstalledFormulas = (exec, ()) =>
+let getInstalledFormulas = (exec) =>
   tryCatch(
     () => {
       let getInstalledFormulasFor = (command) => {
@@ -166,7 +166,7 @@ list                          - shows the installed formulas
         writeBrewFile(system.writeFile, brewConfig)
       };
     installBrewIfNeeded(system.exec)
-    >>= getInstalledFormulas(system.exec)
+    >>= () => getInstalledFormulas(system.exec)
     >>= writeBrewFileIfDoesNotExists
     |> (
       (res) =>
@@ -177,7 +177,7 @@ list                          - shows the installed formulas
     )
   | Install =>
     installBrewIfNeeded(system.exec)
-    >>= loadBreweryConfig(system.readFile)
+    >>= () => loadBreweryConfig(system.readFile)
     >>= installFormula(system.exec, args)
     >>= writeBrewFile(system.writeFile)
     |> (
@@ -188,7 +188,7 @@ list                          - shows the installed formulas
         }
     )
   | List =>
-    loadBreweryConfig(system.readFile, ())
+    loadBreweryConfig(system.readFile)
     >>= (
       (breweryConfig) => {
         let breweryConfigRes = Brewconfig.toJson(breweryConfig);
