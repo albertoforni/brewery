@@ -16,7 +16,8 @@ type command =
   | Help
   | Unknown
   | Install
-  | Init;
+  | Init
+  | List;
 
 let commandToString = (command: command) : string =>
   switch command {
@@ -24,6 +25,7 @@ let commandToString = (command: command) : string =>
   | Init => "init"
   | Install => "install"
   | Unknown => "unknown"
+  | List => "list"
   };
 
 let breweryConfig = homedir() ++ "/.brewery.json";
@@ -41,6 +43,7 @@ let commandOfString = (command: string) : command =>
     | "help" => Help
     | "init" => Init
     | "install" => Install
+    | "list" => List
     | _ => Unknown
   );
 
@@ -61,14 +64,18 @@ let writeBrewFile = (writeFile, brewConfig) =>
   | None => Error("unable to create initial brewery.json")
   };
 
-let loadBrewFile = (readFile, ()) =>
-  readFile(breweryConfig)
-  |> String.trim
-  |> Brewconfig.fromJson
-  |> (
-    fun
-    | Ok(brewConf) => Ok(brewConf)
-    | Error(err) => Error(err)
+let loadBreweryConfig = (readFile, ()) =>
+  tryCatch(
+    () =>
+      readFile(breweryConfig)
+      |> String.trim
+      |> Brewconfig.fromJson
+      |> (
+        fun
+        | Ok(brewConf) => Ok(brewConf)
+        | Error(err) => Error(err)
+      ),
+    Error({j|Error loading $breweryConfig|j})
   );
 
 let getInstalledFormulas = (exec, ()) =>
@@ -123,17 +130,7 @@ let installFormula = (exec, args, brewConfig) => {
     ((formula, isCask)) =>
       tryCatch(
         () => {
-          let _ =
-            exec(
-              "brew install "
-              ++ (
-                if (isCask) {
-                  {j|cask $formula|j}
-                } else {
-                  formula
-                }
-              )
-            );
+          let _ = exec("brew install " ++ (if (isCask) {{j|cask $formula|j}} else {formula}));
           Ok()
         },
         Error({j|Error installing $formula formula|j})
@@ -151,7 +148,16 @@ let installBrewIfNeeded = (exec) =>
 
 let execCommand = (system, (command, args)) =>
   switch command {
-  | Help => Ok("here some help")
+  | Help =>
+    Ok(
+      {j|
+Hi from brewery 🍻  here some help
+
+init                          - creates the $breweryConfig file with the formulas you have installed in brew and brew cask
+install [cask] [formula]      - installs the formula and adds it to the .brewery.json
+list                          - shows the installed formulas
+|j}
+    )
   | Init =>
     let writeBrewFileIfDoesNotExists = (brewConfig) =>
       if (system.fileExists(breweryConfig)) {
@@ -171,7 +177,7 @@ let execCommand = (system, (command, args)) =>
     )
   | Install =>
     installBrewIfNeeded(system.exec)
-    >>= loadBrewFile(system.readFile)
+    >>= loadBreweryConfig(system.readFile)
     >>= installFormula(system.exec, args)
     >>= writeBrewFile(system.writeFile)
     |> (
@@ -180,6 +186,17 @@ let execCommand = (system, (command, args)) =>
         | Ok () => Ok(".brewery.json updated")
         | Error(err) => Error(err)
         }
+    )
+  | List =>
+    loadBreweryConfig(system.readFile, ())
+    >>= (
+      (breweryConfig) => {
+        let breweryConfigRes = Brewconfig.toJson(breweryConfig);
+        switch breweryConfigRes {
+        | Some(breweryConfig) => Ok(breweryConfig)
+        | None => Error({j|"Error converting $breweryConfig to json|j})
+        }
+      }
     )
   | Unknown =>
     system.log("I don't know " ++ (commandToString(command) ++ " command"));

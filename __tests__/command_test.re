@@ -28,7 +28,7 @@ let _ =
             }
           };
           Index.run(system, [|"node", "program", "help"|]);
-          expect(logs^) |> toBe("here some help")
+          expect(logs^) |> toContainString({js|Hi from brewery 🍻  here some help|js})
         }
       )
   );
@@ -259,6 +259,75 @@ describe(
           };
         expect((writeFileRes^, logs^))
         |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json updated"))
+      }
+    );
+    test(
+      "returns an error if .brewery.json isn't found",
+      () => {
+        let logs = ref("");
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          readFile: (_) => raise(Not_found)
+        };
+        let breweryConfig = Index.breweryConfig;
+        Index.run(system, [|"node", "program", "install", "foo"|]);
+        expect(logs^) |> toEqual({j|Error loading $breweryConfig|j})
+      }
+    )
+  }
+);
+
+describe(
+  "brewery list",
+  () => {
+    let breweryConf =
+      Utils.jsonStringfy({"cask": [|"3"|], "brew": [|"first", "second"|]})
+      |> (
+        (res) =>
+          switch res {
+          | Some(content) => content
+          | None => "error"
+          }
+      );
+    test(
+      "shows installed packages",
+      () => {
+        let logs = ref("");
+        let readFileRes = ref("");
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          readFile: (path) => {
+            readFileRes := path;
+            breweryConf
+          }
+        };
+        Index.run(system, [|"node", "program", "list"|]);
+        expect((readFileRes^, logs^)) |> toEqual((Index.breweryConfig, breweryConf))
+      }
+    );
+    test(
+      "returns an error if .brewery.json isn't found",
+      () => {
+        let logs = ref("");
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          readFile: (_) => raise(Not_found)
+        };
+        let breweryConfig = Index.breweryConfig;
+        Index.run(system, [|"node", "program", "list"|]);
+        expect(logs^) |> toEqual({j|Error loading $breweryConfig|j})
       }
     )
   }
