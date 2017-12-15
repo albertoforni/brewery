@@ -332,3 +332,76 @@ describe(
     )
   }
 );
+
+describe(
+  "brewery uninstall",
+  () => {
+    let toJson = (brewery) =>
+      Utils.jsonStringfy(brewery)
+      |> (
+        (res) =>
+          switch res {
+          | Some(content) => content
+          | None => "error"
+          }
+      );
+    let initialBrewery = {"cask": [|"3", "foo"|], "brew": [|"pluto", "tom"|]} |> toJson;
+    test(
+      "removes the formula",
+      () => {
+        let logs = ref("");
+        let writeFileRes = ref(("", ""));
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          readFile: (path) => path == Index.breweryConfig ? initialBrewery : "",
+          writeFile: (path, content) => writeFileRes := (path, content)
+        };
+        let expectedBrewery = {"cask": [|"3", "foo"|], "brew": [|"tom"|]} |> toJson;
+        Index.run(system, [|"node", "program", "uninstall", "pluto"|]);
+        expect((logs^, writeFileRes^))
+        |> toEqual((".brewery.json updated", (Index.breweryConfig, expectedBrewery)))
+      }
+    );
+    test(
+      "removes the cask formula",
+      () => {
+        let logs = ref("");
+        let writeFileRes = ref(("", ""));
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          readFile: (path) => path == Index.breweryConfig ? initialBrewery : "",
+          writeFile: (path, content) => writeFileRes := (path, content)
+        };
+        let expectedBrewery = {"cask": [|"3"|], "brew": [|"pluto", "tom"|]} |> toJson;
+        Index.run(system, [|"node", "program", "uninstall", "cask", "foo"|]);
+        expect((logs^, writeFileRes^))
+        |> toEqual((".brewery.json updated", (Index.breweryConfig, expectedBrewery)))
+      }
+    );
+    test(
+      "returns an error if .brewery.json isn't found",
+      () => {
+        let logs = ref("");
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := s;
+            ()
+          },
+          readFile: (_) => raise(Not_found)
+        };
+        let breweryConfig = Index.breweryConfig;
+        Index.run(system, [|"node", "program", "uninstall", "pluto"|]);
+        expect(logs^) |> toEqual({j|Error loading $breweryConfig|j})
+      }
+    )
+  }
+);

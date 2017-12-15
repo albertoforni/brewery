@@ -14,18 +14,16 @@ let make = (~brew, ~cask) => {
 let add = (brewConfig, isCask, formula) => {
   let package = {name: formula};
   {
-    cask:
-      if (isCask) {
-        brewConfig.cask @ [package]
-      } else {
-        brewConfig.cask
-      },
-    brew:
-      if (! isCask) {
-        brewConfig.brew @ [package]
-      } else {
-        brewConfig.brew
-      }
+    cask: isCask ? brewConfig.cask @ [package] : brewConfig.cask,
+    brew: ! isCask ? brewConfig.brew @ [package] : brewConfig.brew
+  }
+};
+
+let remove = (brewConfig, isCask, formula) => {
+  let filterFormula =  List.filter((p) => p.name != formula);
+  {
+    cask: isCask ? filterFormula(brewConfig.cask) : brewConfig.cask,
+    brew: !isCask ? filterFormula(brewConfig.brew) : brewConfig.brew
   }
 };
 

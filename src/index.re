@@ -17,7 +17,8 @@ type command =
   | Unknown
   | Install
   | Init
-  | List;
+  | List
+  | Uninstall;
 
 let commandToString = (command: command) : string =>
   switch command {
@@ -26,6 +27,7 @@ let commandToString = (command: command) : string =>
   | Install => "install"
   | Unknown => "unknown"
   | List => "list"
+  | Uninstall => "uninstall"
   };
 
 let breweryConfig = homedir() ++ "/.brewery.json";
@@ -44,6 +46,7 @@ let commandOfString = (command: string) : command =>
     | "init" => Init
     | "install" => Install
     | "list" => List
+    | "uninstall" => Uninstall
     | _ => Unknown
   );
 
@@ -139,6 +142,23 @@ let installFormula = (exec, args, brewConfig) => {
   )
 };
 
+let uninstallFormula = (exec, args, brewConfig) => {
+  let getFormula = () =>
+    List.hd(args) == "cask" ? (List.nth(args, 1), true) : (List.hd(args), false);
+  tryCatch(() => Ok(getFormula()), Error("No formula has been passed"))
+  >>= (
+    ((formula, isCask)) =>
+      tryCatch(
+        () => {
+          let _ = exec("brew uninstall " ++ (if (isCask) {{j|cask $formula|j}} else {formula}));
+          Ok()
+        },
+        Error({j|Error uninstalling $formula formula|j})
+      )
+      <$> (() => Brewconfig.remove(brewConfig, isCask, formula))
+  )
+};
+
 let installBrewIfNeeded = (exec) =>
   if (isBrewInstalled(exec)) {
     Ok()
@@ -156,6 +176,7 @@ Hi from brewery 🍻  here some help
 init                          - creates the $breweryConfig file with the formulas you have installed in brew and brew cask
 install [cask] [formula]      - installs the formula and adds it to the .brewery.json
 list                          - shows the installed formulas
+uninstall [cask] [formula]    - uninstalls a formula and removes it from .brewery.json
 |j}
     )
   | Init =>
@@ -166,26 +187,32 @@ list                          - shows the installed formulas
         writeBrewFile(system.writeFile, brewConfig)
       };
     installBrewIfNeeded(system.exec)
-    >>= () => getInstalledFormulas(system.exec)
-    >>= writeBrewFileIfDoesNotExists
-    |> (
-      (res) =>
-        switch res {
-        | Ok () => Ok(".brewery.json created")
-        | Error(err) => Error(err)
-        }
+    >>= (
+      () =>
+        getInstalledFormulas(system.exec)
+        >>= writeBrewFileIfDoesNotExists
+        |> (
+          (res) =>
+            switch res {
+            | Ok () => Ok(".brewery.json created")
+            | Error(err) => Error(err)
+            }
+        )
     )
   | Install =>
     installBrewIfNeeded(system.exec)
-    >>= () => loadBreweryConfig(system.readFile)
-    >>= installFormula(system.exec, args)
-    >>= writeBrewFile(system.writeFile)
-    |> (
-      (res) =>
-        switch res {
-        | Ok () => Ok(".brewery.json updated")
-        | Error(err) => Error(err)
-        }
+    >>= (
+      () =>
+        loadBreweryConfig(system.readFile)
+        >>= installFormula(system.exec, args)
+        >>= writeBrewFile(system.writeFile)
+        |> (
+          (res) =>
+            switch res {
+            | Ok () => Ok(".brewery.json updated")
+            | Error(err) => Error(err)
+            }
+        )
     )
   | List =>
     loadBreweryConfig(system.readFile)
@@ -197,6 +224,17 @@ list                          - shows the installed formulas
         | None => Error({j|"Error converting $breweryConfig to json|j})
         }
       }
+    )
+  | Uninstall =>
+    loadBreweryConfig(system.readFile)
+    >>= uninstallFormula(system.exec, args)
+    >>= writeBrewFile(system.writeFile)
+    |> (
+      (res) =>
+        switch res {
+        | Ok () => Ok(".brewery.json updated")
+        | Error(err) => Error(err)
+        }
     )
   | Unknown =>
     system.log("I don't know " ++ (commandToString(command) ++ " command"));

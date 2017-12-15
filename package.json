@@ -1,15 +1,21 @@
 {
   "name": "brewery",
+  "author": "Alberto Forni",
+  "description": "Teeny tiny wrapper around brew",
+  "repository": "https://github.com/albertodotcom/brewery",
   "version": "0.1.0",
   "scripts": {
     "clean": "bsb -clean-world",
     "build": "bsb -make-world",
     "watch": "bsb -make-world -w",
     "test": "npm run build && jest",
-    "test:watch": "jest --watchAll"
+    "test:watch": "jest --watchAll",
+    "prepublish": "npm run clean && npm run build"
   },
   "keywords": [
-    "BuckleScript"
+    "BuckleScript",
+    "brew",
+    "reason"
   ],
   "license": "MIT",
   "devDependencies": {
@@ -18,5 +24,10 @@
   },
   "dependencies": {
     "bs-json": "^0.2.4"
+  },
+  "main": "./lib/js/src/index.js",
+  "preferGlobal": true,
+  "bin": {
+    "brewery": "./bin/brewery"
   }
 }
