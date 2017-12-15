@@ -8,9 +8,10 @@
     "clean": "bsb -clean-world",
     "build": "bsb -make-world",
     "watch": "bsb -make-world -w",
-    "test": "npm run build && jest",
+    "test": "yarn run build && jest",
     "test:watch": "jest --watchAll",
-    "prepublish": "npm run clean && npm run build"
+    "prepublish": "yarn run clean && yarn run build",
+    "patch-release": "yarn version && git push --follow-tags"
   },
   "keywords": [
     "BuckleScript",
