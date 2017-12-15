@@ -4,11 +4,11 @@ A teeny tiny wrapper around the awesome [Homebrew](https://brew.sh/) that writes
 ## Usage
 Install `brewery` globally via `npm` or `yarn`
 ```
-npm install -g brewery
+npm install -g brewery-cli
 ```
 or
 ```
-yarn global add brewery
+yarn global add brewery-cli
 ```
 then take all your brew and brew cask already installed formulas and create `.breweryfile.json` in your `HOME` folder 
 ```

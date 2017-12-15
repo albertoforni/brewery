@@ -1,5 +1,5 @@
 {
-  "name": "brewery",
+  "name": "brewery-cli",
   "author": "Alberto Forni",
   "description": "Teeny tiny wrapper around brew",
   "repository": "https://github.com/albertodotcom/brewery",
