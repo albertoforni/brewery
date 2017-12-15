@@ -173,8 +173,9 @@ let rec execCommand = (system, (command, args)) =>
       {j|
 Hi from brewery 🍻  here some help
 
-init                          - creates .breweryfile.json file with the formulas you have installed in brew and brew cask
-install [cask] [formula]      - installs the formula and adds it to the .breweryfile.json
+help                          - shows this output
+init                          - creates .breweryfile.json in your HOME folder with the formulas that are currently installed in brew and brew cask
+install [cask] [formula]      - installs the formula and adds it to .breweryfile.json
 list                          - shows the installed formulas
 uninstall [cask] [formula]    - uninstalls a formula and removes it from .breweryfile.json
 |j}
