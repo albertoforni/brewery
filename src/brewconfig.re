@@ -1,52 +1,52 @@
 open Result;
 
-type brewConfig = {
-  cask: list(package),
-  brew: list(package)
+type breweryfile = {
+  cask: list(formula),
+  brew: list(formula)
 }
-and package = {name: string};
+and formula = {name: string};
 
 let make = (~brew, ~cask) => {
   cask: List.map((p) => {{name: p}}, cask),
   brew: List.map((p) => {{name: p}}, brew)
 };
 
-let add = (brewConfig, isCask, formula) => {
-  let package = {name: formula};
+let add = (breweryfile, isCask, formula) => {
+  let formula = {name: formula};
   {
-    cask: isCask ? brewConfig.cask @ [package] : brewConfig.cask,
-    brew: ! isCask ? brewConfig.brew @ [package] : brewConfig.brew
+    cask: isCask ? breweryfile.cask @ [formula] : breweryfile.cask,
+    brew: ! isCask ? breweryfile.brew @ [formula] : breweryfile.brew
   }
 };
 
-let remove = (brewConfig, isCask, formula) => {
+let remove = (breweryfile, isCask, formula) => {
   let filterFormula =  List.filter((p) => p.name != formula);
   {
-    cask: isCask ? filterFormula(brewConfig.cask) : brewConfig.cask,
-    brew: !isCask ? filterFormula(brewConfig.brew) : brewConfig.brew
+    cask: isCask ? filterFormula(breweryfile.cask) : breweryfile.cask,
+    brew: !isCask ? filterFormula(breweryfile.brew) : breweryfile.brew
   }
 };
 
-let toDict = (brewConfig) => {
+let toDict = (breweryfile) => {
   let dict = Js.Dict.empty();
-  let packages = (packages) => packages |> List.map(({name}) => name) |> Array.of_list;
-  Js.Dict.set(dict, "cask", Js.Json.stringArray(packages(brewConfig.cask)));
-  Js.Dict.set(dict, "brew", Js.Json.stringArray(packages(brewConfig.brew)));
+  let formulas = (formula) => formula |> List.map(({name}) => name) |> Array.of_list;
+  Js.Dict.set(dict, "cask", Js.Json.stringArray(formulas(breweryfile.cask)));
+  Js.Dict.set(dict, "brew", Js.Json.stringArray(formulas(breweryfile.brew)));
   dict
 };
 
-let toJson = (brewConfig) => Utils.jsonStringfy(brewConfig |> toDict);
+let toJson = (breweryfile) => Utils.jsonStringfy(breweryfile |> toDict);
 
-let fromJson = (brewConfig) => {
+let fromJson = (breweryfile) => {
   let json =
-    try (Ok(Js.Json.parseExn(brewConfig))) {
+    try (Ok(Js.Json.parseExn(breweryfile))) {
     | _ => Error("Error parsing JSON string")
     };
-  let package = (json) => json |> Json.Decode.string |> ((p) => {name: p});
+  let formula = (json) => json |> Json.Decode.string |> ((p) => {name: p});
   let categories = (json) =>
     Json.Decode.{
-      brew: json |> field("brew", list(package)),
-      cask: json |> field("cask", list(package))
+      brew: json |> field("brew", list(formula)),
+      cask: json |> field("cask", list(formula))
     };
   json <$> categories
 };

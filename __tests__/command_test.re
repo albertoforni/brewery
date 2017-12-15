@@ -58,7 +58,7 @@ describe(
       }
     );
     test(
-      "creates a .brewery.json with the returned brew packages",
+      "creates a .breweryfile.json with the returned brew formulas",
       () => {
         let logs = ref("");
         let writeFileRes = ref(("", ""));
@@ -78,17 +78,17 @@ describe(
             }
         };
         Index.run(system, [|"node", "program", "init"|]);
-        let brewConfigJson =
+        let breweryfile =
           switch (Utils.jsonStringfy({"cask": [|"3", "4"|], "brew": [|"first", "second"|]})) {
           | Some(s) => s
           | None => ""
           };
         expect((writeFileRes^, logs^))
-        |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json created"))
+        |> toEqual(((Index.breweryfilePath, breweryfile), ".breweryfile.json created"))
       }
     );
     test(
-      "returns an error when brew leaves throws and does not write .brewconfig",
+      "returns an error when brew leaves throws and does not write .breweryfile",
       () => {
         let logs = ref("");
         let writeFileRes = ref(("", ""));
@@ -112,7 +112,7 @@ describe(
       }
     );
     test(
-      "returns an error when brew cask install throws and does not write .brewconfig",
+      "returns an error when brew cask install throws and does not write .breweryfile",
       () => {
         let logs = ref("");
         let writeFileRes = ref(("", ""));
@@ -136,7 +136,7 @@ describe(
       }
     );
     test(
-      "returns an error if .brewery.json is already there",
+      "returns an error if .breweryfile.json is already there",
       () => {
         let logs = ref("");
         let writeFileRes = ref(("", ""));
@@ -148,7 +148,7 @@ describe(
           },
           writeFile: (path, content) => writeFileRes := (path, content),
           fileExists: (path) =>
-            if (path == Index.breweryConfig) {
+            if (path == Index.breweryfilePath) {
               true
             } else {
               assert false
@@ -156,7 +156,7 @@ describe(
         };
         Index.run(system, [|"node", "program", "init"|]);
         expect((writeFileRes^, logs^))
-        |> toEqual((("", ""), Index.breweryConfig ++ " exists already"))
+        |> toEqual((("", ""), Index.breweryfilePath ++ " exists already"))
       }
     )
   }
@@ -196,7 +196,7 @@ describe(
       }
     );
     test(
-      "adds brew package to .brewery.json",
+      "adds brew formula to .breweryfile.json",
       () => {
         let logs = ref("");
         let writeFileRes = ref(("", ""));
@@ -219,17 +219,17 @@ describe(
             }
         };
         Index.run(system, [|"node", "program", "install", "yarn"|]);
-        let brewConfigJson =
+        let breweryfile =
           switch (Utils.jsonStringfy({"cask": [|"3"|], "brew": [|"first", "second", "yarn"|]})) {
           | Some(s) => s
           | None => ""
           };
         expect((writeFileRes^, logs^))
-        |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json updated"))
+        |> toEqual(((Index.breweryfilePath, breweryfile), ".breweryfile.json updated"))
       }
     );
     test(
-      "adds cask package to .brewery.json",
+      "adds cask formula to .breweryfile.json",
       () => {
         let logs = ref("");
         let writeFileRes = ref(("", ""));
@@ -252,17 +252,17 @@ describe(
             }
         };
         Index.run(system, [|"node", "program", "install", "cask", "yay"|]);
-        let brewConfigJson =
+        let breweryfile =
           switch (Utils.jsonStringfy({"cask": [|"3", "yay"|], "brew": [|"first", "second"|]})) {
           | Some(s) => s
           | None => ""
           };
         expect((writeFileRes^, logs^))
-        |> toEqual(((Index.breweryConfig, brewConfigJson), ".brewery.json updated"))
+        |> toEqual(((Index.breweryfilePath, breweryfile), ".breweryfile.json updated"))
       }
     );
     test(
-      "returns an error if .brewery.json isn't found",
+      "returns an error if .breweryfile.json isn't found",
       () => {
         let logs = ref("");
         let system = {
@@ -273,9 +273,9 @@ describe(
           },
           readFile: (_) => raise(Not_found)
         };
-        let breweryConfig = Index.breweryConfig;
+        let breweryfilePath = Index.breweryfilePath;
         Index.run(system, [|"node", "program", "install", "foo"|]);
-        expect(logs^) |> toEqual({j|Error loading $breweryConfig|j})
+        expect(logs^) |> toEqual({j|Error loading $breweryfilePath|j})
       }
     )
   }
@@ -294,7 +294,7 @@ describe(
           }
       );
     test(
-      "shows installed packages",
+      "shows installed formulas",
       () => {
         let logs = ref("");
         let readFileRes = ref("");
@@ -310,11 +310,11 @@ describe(
           }
         };
         Index.run(system, [|"node", "program", "list"|]);
-        expect((readFileRes^, logs^)) |> toEqual((Index.breweryConfig, breweryConf))
+        expect((readFileRes^, logs^)) |> toEqual((Index.breweryfilePath, breweryConf))
       }
     );
     test(
-      "returns an error if .brewery.json isn't found",
+      "returns an error if .breweryfile.json isn't found",
       () => {
         let logs = ref("");
         let system = {
@@ -325,9 +325,9 @@ describe(
           },
           readFile: (_) => raise(Not_found)
         };
-        let breweryConfig = Index.breweryConfig;
+        let breweryfilePath = Index.breweryfilePath;
         Index.run(system, [|"node", "program", "list"|]);
-        expect(logs^) |> toEqual({j|Error loading $breweryConfig|j})
+        expect(logs^) |> toEqual({j|Error loading $breweryfilePath|j})
       }
     )
   }
@@ -357,13 +357,13 @@ describe(
             logs := s;
             ()
           },
-          readFile: (path) => path == Index.breweryConfig ? initialBrewery : "",
+          readFile: (path) => path == Index.breweryfilePath ? initialBrewery : "",
           writeFile: (path, content) => writeFileRes := (path, content)
         };
         let expectedBrewery = {"cask": [|"3", "foo"|], "brew": [|"tom"|]} |> toJson;
         Index.run(system, [|"node", "program", "uninstall", "pluto"|]);
         expect((logs^, writeFileRes^))
-        |> toEqual((".brewery.json updated", (Index.breweryConfig, expectedBrewery)))
+        |> toEqual((".breweryfile.json updated", (Index.breweryfilePath, expectedBrewery)))
       }
     );
     test(
@@ -377,17 +377,17 @@ describe(
             logs := s;
             ()
           },
-          readFile: (path) => path == Index.breweryConfig ? initialBrewery : "",
+          readFile: (path) => path == Index.breweryfilePath ? initialBrewery : "",
           writeFile: (path, content) => writeFileRes := (path, content)
         };
         let expectedBrewery = {"cask": [|"3"|], "brew": [|"pluto", "tom"|]} |> toJson;
         Index.run(system, [|"node", "program", "uninstall", "cask", "foo"|]);
         expect((logs^, writeFileRes^))
-        |> toEqual((".brewery.json updated", (Index.breweryConfig, expectedBrewery)))
+        |> toEqual((".breweryfile.json updated", (Index.breweryfilePath, expectedBrewery)))
       }
     );
     test(
-      "returns an error if .brewery.json isn't found",
+      "returns an error if .breweryfilePath.json isn't found",
       () => {
         let logs = ref("");
         let system = {
@@ -398,7 +398,7 @@ describe(
           },
           readFile: (_) => raise(Not_found)
         };
-        let breweryConfig = Index.breweryConfig;
+        let breweryConfig = Index.breweryfilePath;
         Index.run(system, [|"node", "program", "uninstall", "pluto"|]);
         expect(logs^) |> toEqual({j|Error loading $breweryConfig|j})
       }
