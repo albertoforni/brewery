@@ -166,7 +166,7 @@ let installBrewIfNeeded = (exec) =>
     installBrew(exec)
   };
 
-let execCommand = (system, (command, args)) =>
+let rec execCommand = (system, (command, args)) =>
   switch command {
   | Help =>
     Ok(
@@ -237,8 +237,12 @@ uninstall [cask] [formula]    - uninstalls a formula and removes it from .brewer
         }
     )
   | Unknown =>
-    system.log("I don't know " ++ (commandToString(command) ++ " command"));
-    Error(commandToString(command))
+    if (List.length(args) == 0) {
+      execCommand(system, (Help, args))
+    } else {
+      system.log("I don't know " ++ (commandToString(command) ++ " command"));
+      Error(commandToString(command))
+    }
   };
 
 let run = (system, stdin) =>

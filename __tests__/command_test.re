@@ -15,7 +15,8 @@ let defaultSystem = {
 let _ =
   describe(
     "brewery help",
-    () =>
+    () => {
+      let expectedFirstLineOutput = {js|Hi from brewery 🍻  here some help|js};
       test(
         "it returns help",
         () => {
@@ -28,9 +29,25 @@ let _ =
             }
           };
           Index.run(system, [|"node", "program", "help"|]);
-          expect(logs^) |> toContainString({js|Hi from brewery 🍻  here some help|js})
+          expect(logs^) |> toContainString(expectedFirstLineOutput)
+        }
+      );
+      test(
+        "it returns help when no argument is passed",
+        () => {
+          let logs = ref("");
+          let system = {
+            ...defaultSystem,
+            log: (s) => {
+              logs := s;
+              ()
+            }
+          };
+          Index.run(system, [|"node", "program"|]);
+          expect(logs^) |> toContainString(expectedFirstLineOutput)
         }
       )
+    }
   );
 
 describe(
