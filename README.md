@@ -1,4 +1,4 @@
-# Brewery
+# Brewery [![Build Status](https://travis-ci.org/albertodotcom/brewery.svg?branch=master)](https://travis-ci.org/albertodotcom/brewery)
 A teeny tiny wrapper around the awesome [Homebrew](https://brew.sh/) that writes your **brew** and **cask** formulas in a `.breweryfile.json` so that you can save it in your `dotfiles`
 
 ## Usage
