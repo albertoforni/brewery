@@ -135,7 +135,7 @@ let installFormula = (exec, args, breweryfile) => {
     ((formula, isCask)) =>
       tryCatch(
         () => {
-          let _ = exec("brew install " ++ (if (isCask) {{j|cask $formula|j}} else {formula}));
+          let _ = exec("brew " ++ (if (isCask) {{j|cask install $formula|j}} else {j|install $formula|j}));
           Ok()
         },
         Error({j|Error installing $formula formula|j})
