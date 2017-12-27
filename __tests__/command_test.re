@@ -57,13 +57,17 @@ describe(
       "installs brew when it's not there",
       () => {
         let installBrew = ref(false);
+        let installCask = ref(false);
         let system = {
           ...defaultSystem,
           exec: (command) =>
             switch command {
             | "brew --version" => assert false /* when it errors out it means it is not installed */
-            | s when s == Index.installBrewScript =>
+            | command when command == Index.installBrewScript =>
               installBrew := true;
+              "install script output"
+            | command when command == Index.installCaskScript =>
+              installCask := true;
               "install script output"
             | "brew leaves" => "first\nsecond\n"
             | "brew cask list" => "3\n4\n"
@@ -71,7 +75,7 @@ describe(
             }
         };
         Index.run(system, [|"node", "program", "init"|]);
-        expect(installBrew^) |> toEqual(true)
+        expect((installBrew^, installCask^)) |> toEqual((true, true))
       }
     );
     test(
@@ -195,13 +199,17 @@ describe(
       "installs brew when it's not there",
       () => {
         let installBrew = ref(false);
+        let installCask = ref(false);
         let system = {
           ...defaultSystem,
           exec: (command) =>
             switch command {
             | "brew --version" => assert false /* when it errors it means it is not installed */
-            | s when s == Index.installBrewScript =>
+            | command when command == Index.installBrewScript =>
               installBrew := true;
+              "install script output"
+            | command when command == Index.installCaskScript =>
+              installCask := true;
               "install script output"
             | "brew leaves" => "first\nsecond\n"
             | "brew cask list" => "3\n4\n"
@@ -209,7 +217,7 @@ describe(
             }
         };
         Index.run(system, [|"node", "program", "install"|]);
-        expect(installBrew^) |> toEqual(true)
+        expect((installBrew^, installCask^)) |> toEqual((true, true))
       }
     );
     test(

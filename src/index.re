@@ -1,6 +1,7 @@
 open Result;
 
 let installBrewScript = {|/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"|};
+let installCaskScript = {|brew tap caskroom/cask|};
 
 type system = {
   log: string => unit,
@@ -106,6 +107,7 @@ let installBrew = (exec) =>
   tryCatch(
     () => {
       let _ = exec(installBrewScript);
+      let _ = exec(installCaskScript);
       Ok()
     },
     Error("error installing brew")
