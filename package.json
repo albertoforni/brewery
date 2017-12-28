@@ -3,7 +3,7 @@
   "author": "Alberto Forni",
   "description": "Teeny tiny wrapper around brew",
   "repository": "https://github.com/albertodotcom/brewery",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "scripts": {
     "clean": "bsb -clean-world",
     "build": "bsb -make-world",
