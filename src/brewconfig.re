@@ -11,11 +11,11 @@ let make = (~brew, ~cask) => {
   brew: List.map((p) => {{name: p}}, brew)
 };
 
-let add = (breweryfile, isCask, formula) => {
-  let formula = {name: formula};
+let add = (breweryfile, isCask, formulaName) => {
+  let formula = {name: formulaName};
   {
-    cask: isCask ? breweryfile.cask @ [formula] : breweryfile.cask,
-    brew: ! isCask ? breweryfile.brew @ [formula] : breweryfile.brew
+    cask: isCask && !List.exists(({name}) => name == formulaName, breweryfile.cask) ? breweryfile.cask @ [formula] : breweryfile.cask,
+    brew: ! isCask && !List.exists(({name}) => name == formulaName, breweryfile.brew) ? breweryfile.brew @ [formula] : breweryfile.brew
   }
 };
 

@@ -287,6 +287,41 @@ describe(
       }
     );
     test(
+      "doesn't add cask formula to .breweryfile.json when already there",
+      () => {
+        let initialBrewery =
+          Utils.jsonStringfy({"cask": [|"3", "yay"|], "brew": [|"first", "second"|]})
+          |> (
+            (res) =>
+              switch res {
+              | Some(content) => content
+              | None => "error"
+              }
+          );
+        let writeFileRes = ref(("", ""));
+        let system = {
+          ...defaultSystem,
+          writeFile: (path, content) => writeFileRes := (path, content),
+          readFile: (_) => {
+            initialBrewery
+          },
+          exec: (command) =>
+            switch command {
+            | "brew --version" => "brew already installed"
+            | _ => ""
+            }
+        };
+        Index.run(system, [|"node", "program", "install", "cask", "yay"|]);
+        let breweryfile =
+          switch (Utils.jsonStringfy({"cask": [|"3", "yay"|], "brew": [|"first", "second"|]})) {
+          | Some(s) => s
+          | None => ""
+          };
+        expect(writeFileRes^)
+        |> toEqual((Index.breweryfilePath, breweryfile))
+      }
+    );
+    test(
       "returns an error if .breweryfile.json isn't found",
       () => {
         let logs = ref("");
