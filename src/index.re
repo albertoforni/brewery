@@ -152,7 +152,7 @@ let uninstallFormula = (exec, args, breweryfile) => {
     ((formula, isCask)) =>
       tryCatch(
         () => {
-          let _ = exec("brew uninstall " ++ (if (isCask) {{j|cask $formula|j}} else {formula}));
+          let _ = exec("brew " ++ (if (isCask) {{j|cask uninstall $formula|j}} else {j|uninstall $formula|j}));
           Ok()
         },
         Error({j|Error uninstalling $formula formula|j})
