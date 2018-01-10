@@ -21,7 +21,7 @@ Hi from brewery 🍻  here some help
 
 help                          - shows this output
 init                          - creates .breweryfile.json in your HOME folder with the formulas that are currently installed in brew and brew cask
-install [cask] [formula]      - installs the formula and adds it to .breweryfile.json
+install [cask] [formula]      - with no arguments installs the formulas from .breweryfile.json. With arguments installs the formula and adds it to .breweryfile.json
 list                          - shows the installed formulas
 uninstall [cask] [formula]    - uninstalls a formula and removes it from .breweryfile.json
 ```

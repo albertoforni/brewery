@@ -287,6 +287,115 @@ describe(
       }
     );
     test(
+      "installs all formulas from .breweryfile.json when no arguments are passed in",
+      () => {
+        let initialBrewery =
+          Utils.jsonStringfy({"cask": [|"3", "foo"|], "brew": [|"first", "boom"|]})
+          |> (
+            (res) =>
+              switch res {
+              | Some(content) => content
+              | None => "error"
+              }
+          );
+        let logs = ref([]);
+        let readFileRes = ref("");
+        let installedFormulas = ref([]);
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := logs^ @ [s];
+            ()
+          },
+          readFile: (path) => {
+            readFileRes := path;
+            initialBrewery
+          },
+          exec: (command) =>
+            switch command {
+            | "brew --version" => "brew already installed"
+            | formula =>
+              installedFormulas := installedFormulas^ @ [formula];
+              ""
+            }
+        };
+        Index.run(system, [|"node", "program", "install"|]);
+        expect((logs^, installedFormulas^))
+        |> toEqual((
+             [
+               "first installed successfully",
+               "boom installed successfully",
+               "3 installed successfully",
+               "foo installed successfully",
+               "All formulas installed"
+             ],
+             [
+               "brew install first",
+               "brew install boom",
+               "brew cask install 3",
+               "brew cask install foo"
+             ]
+           ))
+      }
+    );
+    test(
+      "logs the formulas that failed to be installed",
+      () => {
+        let initialBrewery =
+          Utils.jsonStringfy({"cask": [|"3", "foo"|], "brew": [|"first", "boom"|]})
+          |> (
+            (res) =>
+              switch res {
+              | Some(content) => content
+              | None => "error"
+              }
+          );
+        let logs = ref([]);
+        let readFileRes = ref("");
+        let installedFormulas = ref([]);
+        let system = {
+          ...defaultSystem,
+          log: (s) => {
+            logs := logs^ @ [s];
+            ()
+          },
+          readFile: (path) => {
+            readFileRes := path;
+            initialBrewery
+          },
+          exec: (command) =>
+            switch command {
+            | "brew --version" => "brew already installed"
+            | formula =>
+              if (formula != "brew cask install 3") {
+                installedFormulas := installedFormulas^ @ [formula];
+                ""
+              } else {
+                installedFormulas := installedFormulas^ @ [formula];
+                raise(Exit)
+              }
+            }
+        };
+        Index.run(system, [|"node", "program", "install"|]);
+        expect((logs^, installedFormulas^))
+        |> toEqual((
+             [
+               "first installed successfully",
+               "boom installed successfully",
+               "Error installing 3 formula",
+               "foo installed successfully",
+               "Not all formulas installed"
+             ],
+             [
+               "brew install first",
+               "brew install boom",
+               "brew cask install 3",
+               "brew cask install foo"
+             ]
+           ))
+      }
+    );
+    test(
       "doesn't add cask formula to .breweryfile.json when already there",
       () => {
         let initialBrewery =
@@ -302,9 +411,7 @@ describe(
         let system = {
           ...defaultSystem,
           writeFile: (path, content) => writeFileRes := (path, content),
-          readFile: (_) => {
-            initialBrewery
-          },
+          readFile: (_) => initialBrewery,
           exec: (command) =>
             switch command {
             | "brew --version" => "brew already installed"
@@ -317,8 +424,7 @@ describe(
           | Some(s) => s
           | None => ""
           };
-        expect(writeFileRes^)
-        |> toEqual((Index.breweryfilePath, breweryfile))
+        expect(writeFileRes^) |> toEqual((Index.breweryfilePath, breweryfile))
       }
     );
     test(

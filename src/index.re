@@ -1,6 +1,7 @@
 open Result;
 
 let installBrewScript = {|/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"|};
+
 let installCaskScript = {|brew tap caskroom/cask|};
 
 type system = {
@@ -123,7 +124,7 @@ let isBrewInstalled = (exec) => {
   }
 };
 
-let installFormula = (exec, args, breweryfile) => {
+let installFormula = (exec, args) => {
   let getFormula = () =>
     if (List.hd(args) == "cask") {
       (List.nth(args, 1), true)
@@ -135,13 +136,20 @@ let installFormula = (exec, args, breweryfile) => {
     ((formula, isCask)) =>
       tryCatch(
         () => {
-          let _ = exec("brew " ++ (if (isCask) {{j|cask install $formula|j}} else {j|install $formula|j}));
-          Ok()
+          let _ =
+            exec(
+              "brew " ++ (if (isCask) {{j|cask install $formula|j}} else {{j|install $formula|j}})
+            );
+          Ok(formula)
         },
         Error({j|Error installing $formula formula|j})
       )
-      <$> (() => Brewconfig.add(breweryfile, isCask, formula))
   )
+};
+
+let addToBreweryfile = (args, breweryfile, formula) => {
+  let isCask = List.hd(args) == "cask";
+  Brewconfig.add(breweryfile, isCask, formula)
 };
 
 let uninstallFormula = (exec, args, breweryfile) => {
@@ -152,7 +160,11 @@ let uninstallFormula = (exec, args, breweryfile) => {
     ((formula, isCask)) =>
       tryCatch(
         () => {
-          let _ = exec("brew " ++ (if (isCask) {{j|cask uninstall $formula|j}} else {j|uninstall $formula|j}));
+          let _ =
+            exec(
+              "brew "
+              ++ (if (isCask) {{j|cask uninstall $formula|j}} else {{j|uninstall $formula|j}})
+            );
           Ok()
         },
         Error({j|Error uninstalling $formula formula|j})
@@ -177,7 +189,7 @@ Hi from brewery 🍻  here some help
 
 help                          - shows this output
 init                          - creates .breweryfile.json in your HOME folder with the formulas that are currently installed in brew and brew cask
-install [cask] [formula]      - installs the formula and adds it to .breweryfile.json
+install [cask] [formula]      - with no arguments installs the formulas from .breweryfile.json. With arguments installs the formula and adds it to .breweryfile.json
 list                          - shows the installed formulas
 uninstall [cask] [formula]    - uninstalls a formula and removes it from .breweryfile.json
 |j}
@@ -207,13 +219,63 @@ uninstall [cask] [formula]    - uninstalls a formula and removes it from .brewer
     >>= (
       () =>
         loadBreweryConfig(system.readFile)
-        >>= installFormula(system.exec, args)
-        >>= writeBrewFile(system.writeFile)
-        |> (
-          (res) =>
-            switch res {
-            | Ok () => Ok(".breweryfile.json updated")
-            | Error(err) => Error(err)
+        >>= (
+          (breweryfile) =>
+            if (List.length(args) === 0) {
+              List.map(
+                (f: Brewconfig.formula) =>
+                  installFormula(system.exec, [f.name])
+                  |> (
+                    (res) =>
+                      switch res {
+                      | Ok(formula) =>
+                        system.log(formula ++ " installed successfully");
+                        Ok()
+                      | Error(err) =>
+                        system.log(err);
+                        Error(err)
+                      }
+                  ),
+                breweryfile.brew
+              )
+              @ List.map(
+                  (f: Brewconfig.formula) =>
+                    installFormula(system.exec, ["cask", f.name])
+                    |> (
+                      (res) =>
+                        switch res {
+                        | Ok(formula) =>
+                          system.log(formula ++ " installed successfully");
+                          Ok()
+                        | Error(err) =>
+                          system.log(err);
+                          Error(err)
+                        }
+                    ),
+                  breweryfile.cask
+                )
+              |> List.for_all(
+                   (res) =>
+                     switch res {
+                     | Ok(_) => true
+                     | Error(_) => false
+                     }
+                 )
+              |> (
+                (isSuccess) =>
+                  isSuccess ? Ok("All formulas installed") : Error("Not all formulas installed")
+              )
+            } else {
+              installFormula(system.exec, args)
+              <$> addToBreweryfile(args, breweryfile)
+              >>= writeBrewFile(system.writeFile)
+              |> (
+                (res) =>
+                  switch res {
+                  | Ok () => Ok(".breweryfile.json updated")
+                  | Error(err) => Error(err)
+                  }
+              )
             }
         )
     )
