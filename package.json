@@ -24,7 +24,10 @@
     "bs-platform": "^2.1.0"
   },
   "dependencies": {
-    "bs-json": "^0.2.4"
+    "bs-json": "^0.2.4",
+    "global": "^4.3.2",
+    "install": "^0.10.2",
+    "npm": "^5.6.0"
   },
   "main": "./lib/js/src/index.js",
   "preferGlobal": true,

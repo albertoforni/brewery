@@ -52,7 +52,7 @@ let commandOfString = (command: string) : command =>
     | _ => Unknown
   );
 
-let getCommandAndArguments = (args) =>
+let getCommandAndArguments = args =>
   switch args {
   | [command, ...rest] => (commandOfString(command), rest)
   | _ => (Unknown, [])
@@ -65,11 +65,11 @@ let writeBrewFile = (writeFile, breweryfile) =>
   switch (Brewconfig.toJson(breweryfile)) {
   | Some(s) =>
     writeFile(breweryfilePath, s);
-    Ok()
+    Ok();
   | None => Error("unable to create initial brewery.json")
   };
 
-let loadBreweryConfig = (readFile) =>
+let loadBreweryConfig = readFile =>
   tryCatch(
     () =>
       readFile(breweryfilePath)
@@ -83,101 +83,109 @@ let loadBreweryConfig = (readFile) =>
     Error({j|Error loading $breweryfilePath|j})
   );
 
-let getInstalledFormulas = (exec) =>
+let getInstalledFormulas = exec =>
   tryCatch(
     () => {
-      let getInstalledFormulasFor = (command) => {
+      let getInstalledFormulasFor = command => {
         let leaves: string = exec(command) |> Utils.stringOfBuffer;
         leaves
         |> String.trim
         |> Js.String.split("\n")
         |> Array.to_list
-        |> List.map(fun (s) => (s: string))
+        |> List.map(s => (s: string));
       };
       Ok(
         Brewconfig.make(
           ~brew=getInstalledFormulasFor("brew leaves"),
           ~cask=getInstalledFormulasFor("brew cask list")
         )
-      )
+      );
     },
     Error("error getting installed formulas")
   );
 
-let installBrew = (exec) =>
+let installBrew = exec =>
   tryCatch(
     () => {
       let _ = exec(installBrewScript);
       let _ = exec(installCaskScript);
-      Ok()
+      Ok();
     },
     Error("error installing brew")
   );
 
-let isBrewInstalled = (exec) => {
+let isBrewInstalled = exec => {
   let isInstalled = () => {
     let _ = exec("brew --version");
-    true
+    true;
   };
   try (isInstalled()) {
   | _ => false
-  }
+  };
 };
 
+let getFormula = args =>
+  tryCatch(
+    () =>
+      if (List.hd(args) == "cask") {
+        Ok((List.nth(args, 1), true));
+      } else {
+        Ok((List.hd(args), false));
+      },
+    Error("No formula has been passed")
+  );
+
 let installFormula = (exec, args) => {
-  let getFormula = () =>
-    if (List.hd(args) == "cask") {
-      (List.nth(args, 1), true)
-    } else {
-      (List.hd(args), false)
-    };
-  tryCatch(() => Ok(getFormula()), Error("No formula has been passed"))
-  >>= (
-    ((formula, isCask)) =>
-      tryCatch(
-        () => {
-          let _ =
-            exec(
-              "brew " ++ (if (isCask) {{j|cask install $formula|j}} else {{j|install $formula|j}})
-            );
-          Ok(formula)
-        },
-        Error({j|Error installing $formula formula|j})
-      )
-  )
+  let installFormula = ((formula, isCask)) =>
+    tryCatch(
+      () => {
+        let _ =
+          exec(
+            "brew "
+            ++ (
+              if (isCask) {{j|cask install $formula|j}} else {
+                {j|install $formula|j}
+              }
+            )
+          );
+        Ok(formula);
+      },
+      Error({j|Error installing $formula formula|j})
+    );
+  getFormula(args) >>= installFormula;
 };
 
 let addToBreweryfile = (args, breweryfile, formula) => {
   let isCask = List.hd(args) == "cask";
-  Brewconfig.add(breweryfile, isCask, formula)
+  Brewconfig.add(breweryfile, isCask, formula);
 };
 
 let uninstallFormula = (exec, args, breweryfile) => {
-  let getFormula = () =>
-    List.hd(args) == "cask" ? (List.nth(args, 1), true) : (List.hd(args), false);
-  tryCatch(() => Ok(getFormula()), Error("No formula has been passed"))
-  >>= (
-    ((formula, isCask)) =>
-      tryCatch(
-        () => {
-          let _ =
-            exec(
-              "brew "
-              ++ (if (isCask) {{j|cask uninstall $formula|j}} else {{j|uninstall $formula|j}})
-            );
-          Ok()
-        },
-        Error({j|Error uninstalling $formula formula|j})
-      )
-      <$> (() => Brewconfig.remove(breweryfile, isCask, formula))
-  )
+  let uninstallFormula = ((formula, isCask)) =>
+    tryCatch(
+      () => {
+        let _ =
+          exec(
+            "brew "
+            ++ (
+              if (isCask) {{j|cask uninstall $formula|j}} else {
+                {j|uninstall $formula|j}
+              }
+            )
+          );
+        Ok();
+      },
+      Error({j|Error uninstalling $formula formula|j})
+    )
+    <$> (() => Brewconfig.remove(breweryfile, isCask, formula));
+  getFormula(args) >>= uninstallFormula;
 };
 
-let installBrewIfNeeded = (exec) =>
+let installBrewIfNeeded = exec =>
   if (isBrewInstalled(exec)) {
-    Ok()
+    Ok();
   } else {
-    installBrew(exec)
+    installBrew(exec);
   };
 
 let rec execCommand = (system, (command, args)) =>
@@ -195,99 +203,85 @@ uninstall [cask] [formula]    - uninstalls a formula and removes it from .brewer
 |j}
     )
   | Init =>
-    let writeBreweryfileIfDoesNotExists = (breweryfile) =>
+    let writeBreweryfileIfDoesNotExists = breweryfile =>
       if (system.fileExists(breweryfilePath)) {
-        Error(breweryfilePath ++ " exists already")
+        Error(breweryfilePath ++ " exists already");
       } else {
-        writeBrewFile(system.writeFile, breweryfile)
+        writeBrewFile(system.writeFile, breweryfile);
       };
     installBrewIfNeeded(system.exec)
-    >>= (
-      () =>
-        getInstalledFormulas(system.exec)
-        >>= writeBreweryfileIfDoesNotExists
-        |> (
-          (res) =>
-            switch res {
-            | Ok () => Ok(".breweryfile.json created")
-            | Error(err) => Error(err)
-            }
-        )
-    )
+    >>= (() => getInstalledFormulas(system.exec))
+    >>= writeBreweryfileIfDoesNotExists
+    |> (
+      res =>
+        switch res {
+        | Ok () => Ok(".breweryfile.json created")
+        | Error(err) => Error(err)
+        }
+    );
   | Install =>
-    installBrewIfNeeded(system.exec)
-    >>= (
-      () =>
-        loadBreweryConfig(system.readFile)
-        >>= (
-          (breweryfile) =>
-            if (List.length(args) === 0) {
-              List.map(
-                (f: Brewconfig.formula) =>
-                  installFormula(system.exec, [f.name])
-                  |> (
-                    (res) =>
-                      switch res {
-                      | Ok(formula) =>
-                        system.log(formula ++ " installed successfully");
-                        Ok()
-                      | Error(err) =>
-                        system.log(err);
-                        Error(err)
-                      }
-                  ),
-                breweryfile.brew
-              )
-              @ List.map(
-                  (f: Brewconfig.formula) =>
-                    installFormula(system.exec, ["cask", f.name])
-                    |> (
-                      (res) =>
-                        switch res {
-                        | Ok(formula) =>
-                          system.log(formula ++ " installed successfully");
-                          Ok()
-                        | Error(err) =>
-                          system.log(err);
-                          Error(err)
-                        }
-                    ),
-                  breweryfile.cask
-                )
-              |> List.for_all(
-                   (res) =>
-                     switch res {
-                     | Ok(_) => true
-                     | Error(_) => false
-                     }
-                 )
-              |> (
-                (isSuccess) =>
-                  isSuccess ? Ok("All formulas installed") : Error("Not all formulas installed")
-              )
-            } else {
-              installFormula(system.exec, args)
-              <$> addToBreweryfile(args, breweryfile)
-              >>= writeBrewFile(system.writeFile)
-              |> (
-                (res) =>
-                  switch res {
-                  | Ok () => Ok(".breweryfile.json updated")
-                  | Error(err) => Error(err)
-                  }
-              )
-            }
+    let logInstallResult = res =>
+      switch res {
+      | Ok(formula) =>
+        system.log(formula ++ " installed successfully");
+        Ok();
+      | Error(err) =>
+        system.log(err);
+        Error(err);
+      };
+    let installNewFormula = breweryfile =>
+      installFormula(system.exec, args)
+      <$> addToBreweryfile(args, breweryfile)
+      >>= writeBrewFile(system.writeFile)
+      |> (
+        res =>
+          switch res {
+          | Ok () => Ok(".breweryfile.json updated")
+          | Error(err) => Error(err)
+          }
+      );
+    let installAllFormulasFromBreweryFile =
+        (breweryfile: Brewconfig.breweryfile) =>
+      List.map(
+        (f: Brewconfig.formula) =>
+          installFormula(system.exec, [f.name]) |> logInstallResult,
+        breweryfile.brew
+      )
+      @ List.map(
+          (f: Brewconfig.formula) =>
+            installFormula(system.exec, ["cask", f.name]) |> logInstallResult,
+          breweryfile.cask
         )
-    )
+      |> List.for_all(res =>
+           switch res {
+           | Ok(_) => true
+           | Error(_) => false
+           }
+         )
+      |> (
+        isSuccess =>
+          isSuccess ?
+            Ok("All formulas installed") : Error("Not all formulas installed")
+      );
+    installBrewIfNeeded(system.exec)
+    >>= (() => loadBreweryConfig(system.readFile))
+    >>= (
+      breweryfile =>
+        if (List.length(args) === 0) {
+          installAllFormulasFromBreweryFile(breweryfile);
+        } else {
+          installNewFormula(breweryfile);
+        }
+    );
   | List =>
     loadBreweryConfig(system.readFile)
     >>= (
-      (breweryConfig) => {
+      breweryConfig => {
         let breweryConfigRes = Brewconfig.toJson(breweryConfig);
         switch breweryConfigRes {
         | Some(breweryConfig) => Ok(breweryConfig)
         | None => Error({j|"Error converting $breweryConfig to json|j})
-        }
+        };
       }
     )
   | Uninstall =>
@@ -295,7 +289,7 @@ uninstall [cask] [formula]    - uninstalls a formula and removes it from .brewer
     >>= uninstallFormula(system.exec, args)
     >>= writeBrewFile(system.writeFile)
     |> (
-      (res) =>
+      res =>
         switch res {
         | Ok () => Ok(".breweryfile.json updated")
         | Error(err) => Error(err)
@@ -303,10 +297,10 @@ uninstall [cask] [formula]    - uninstalls a formula and removes it from .brewer
     )
   | Unknown =>
     if (List.length(args) == 0) {
-      execCommand(system, (Help, args))
+      execCommand(system, (Help, args));
     } else {
-      system.log("I don't know " ++ (commandToString(command) ++ " command"));
-      Error(commandToString(command))
+      system.log("I don't know " ++ commandToString(command) ++ " command");
+      Error(commandToString(command));
     }
   };
 
@@ -315,7 +309,7 @@ let run = (system, stdin) =>
   |> getCommandAndArguments
   |> execCommand(system)
   |> (
-    (res) =>
+    res =>
       switch res {
       | Ok(resText) => system.log(resText)
       | Error(resText) => system.log(resText)
@@ -326,12 +320,13 @@ let system = {
   log: Js.log,
   writeFile: Node_fs.writeFileAsUtf8Sync,
   readFile: Node_fs.readFileAsUtf8Sync,
-  exec: (command) => Node_child_process.execSync(command, Node_child_process.option()),
-  fileExists: (filePath) =>
+  exec: command =>
+    Node_child_process.execSync(command, Node_child_process.option()),
+  fileExists: filePath =>
     tryCatch(
       () => {
         let _ = Node_fs.readFileAsUtf8Sync(filePath);
-        true
+        true;
       },
       false
     )
