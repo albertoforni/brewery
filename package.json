@@ -10,7 +10,7 @@
     "watch": "bsb -make-world -w",
     "test": "yarn run build && jest",
     "test:watch": "jest --watchAll",
-    "prepublish": "yarn run clean && yarn run build",
+    "prepare": "yarn run clean && yarn run build",
     "patch-release": "yarn version && git push --follow-tags"
   },
   "keywords": [
